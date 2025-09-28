@@ -1,0 +1,180 @@
+-- Painel MM2 Hacker by FELIPE
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local runService = game:GetService("RunService")
+
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "MM2_HACKER"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 240, 0, 360)
+frame.Position = UDim2.new(0.5, -120, 0.5, -180)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.Visible = true
+
+local abrirBotao = Instance.new("TextButton", gui)
+abrirBotao.Size = UDim2.new(0, 100, 0, 30)
+abrirBotao.Position = UDim2.new(0, 10, 0, 10)
+abrirBotao.Text = "🧠 Abrir Painel"
+abrirBotao.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+abrirBotao.TextColor3 = Color3.new(1, 1, 1)
+abrirBotao.Visible = false
+
+abrirBotao.MouseButton1Click:Connect(function()
+    frame.Visible = true
+    abrirBotao.Visible = false
+end)
+
+local function criarBotao(nome, ordem, acao)
+    local botao = Instance.new("TextButton")
+    botao.Size = UDim2.new(1, -20, 0, 30)
+    botao.Position = UDim2.new(0, 10, 0, 10 + (ordem - 1) * 35)
+    botao.Text = nome
+    botao.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    botao.TextColor3 = Color3.new(1, 1, 1)
+    botao.Font = Enum.Font.GothamBold
+    botao.TextSize = 14
+    botao.Parent = frame
+    botao.MouseButton1Click:Connect(acao)
+end
+
+-- 🧱 NoClip real (passar por parede)
+local noclip = false
+local function toggleWallWalk()
+    noclip = not noclip
+    spawn(function()
+        while noclip do
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+            wait()
+        end
+    end)
+end
+
+-- 🔍 ESP só pra quem tem arma ou faca
+local espAtivo = false
+local function toggleESP()
+    espAtivo = not espAtivo
+    spawn(function()
+        while espAtivo do
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local temFaca = p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife")
+                    local temArma = p.Backpack:FindFirstChild("Gun") or p.Character:FindFirstChild("Gun")
+
+                    if temFaca or temArma then
+                        local tag = p.Character.HumanoidRootPart:FindFirstChild("RoleTag")
+                        if not tag then
+                            tag = Instance.new("BillboardGui", p.Character.HumanoidRootPart)
+                            tag.Name = "RoleTag"
+                            tag.Size = UDim2.new(0, 100, 0, 20)
+                            tag.Adornee = p.Character.HumanoidRootPart
+                            tag.AlwaysOnTop = true
+
+                            local texto = Instance.new("TextLabel", tag)
+                            texto.Size = UDim2.new(1, 0, 1, 0)
+                            texto.BackgroundTransparency = 1
+                            texto.TextColor3 = temFaca and Color3.new(1, 0, 0) or Color3.new(0, 1, 0)
+                            texto.Font = Enum.Font.GothamBold
+                            texto.TextSize = 14
+                            texto.Text = temFaca and "🔪 Faca" or "🔫 Arma"
+                        end
+                    end
+                end
+            end
+            wait(2)
+        end
+    end)
+end
+
+-- 👁️ Visão AUX aérea
+local auxAtivo = false
+local function toggleAUX()
+    auxAtivo = not auxAtivo
+    local cam = workspace.CurrentCamera
+    if auxAtivo then
+        cam.CameraType = Enum.CameraType.Scriptable
+        cam.CFrame = CFrame.new(char.HumanoidRootPart.Position + Vector3.new(0, 100, 0), char.HumanoidRootPart.Position)
+    else
+        cam.CameraType = Enum.CameraType.Custom
+    end
+end
+
+-- 🔫 Auto tiro no assassino (se for xerife)
+local autoShoot = false
+local function toggleAutoShoot()
+    autoShoot = not autoShoot
+    spawn(function()
+        while autoShoot do
+            local gun = player.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+            local shootRemote = game.ReplicatedStorage:FindFirstChild("ShootGun")
+
+            if gun and shootRemote then
+                for _, p in pairs(game.Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local temFaca = p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife")
+                        if temFaca and p.Character:FindFirstChild("HumanoidRootPart") then
+                            local dist = (p.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
+                            if dist <= 60 then
+                                shootRemote:FireServer(p.Character.HumanoidRootPart.Position)
+                            end
+                        end
+                    end
+                end
+            end
+            wait(1)
+        end
+    end)
+end
+
+-- 🚀 Auto pegar arma caída e matar assassino
+local autoResgate = false
+local function toggleAutoResgate()
+    autoResgate = not autoResgate
+    spawn(function()
+        while autoResgate do
+            local armaDropada = workspace:FindFirstChild("GunDrop")
+            if armaDropada and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = armaDropada.CFrame + Vector3.new(0, 3, 0)
+                wait(1)
+
+                local gun = player.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun")
+                local shootRemote = game.ReplicatedStorage:FindFirstChild("ShootGun")
+
+                if gun and shootRemote then
+                    for _, p in pairs(game.Players:GetPlayers()) do
+                        if p ~= player and p.Character then
+                            local temFaca = p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife")
+                            if temFaca and p.Character:FindFirstChild("HumanoidRootPart") then
+                                local dist = (p.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
+                                if dist <= 60 then
+                                    shootRemote:FireServer(p.Character.HumanoidRootPart.Position)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            wait(2)
+        end
+    end)
+end
+
+-- 🚪 Fechar painel
+local function fecharPainel()
+    frame.Visible = false
+    abrirBotao.Visible = true
+end
+
+-- Botões
+criarBotao("🧱 Passar Parede", 1, toggleWallWalk)
+criarBotao("🔍 Mostrar Arma/Faca", 2, toggleESP)
+criarBotao("👁️ Visão AUX", 3, toggleAUX)
+criarBotao("🔫 Auto Tiro no Assassino", 4, toggleAutoShoot)
+criarBotao("🚀 Auto Pegar Arma + Matar", 5, toggleAutoResgate)
+criarBotao("🚪 Fechar Painel", 6, fecharPainel)
